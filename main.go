@@ -34,7 +34,7 @@ var indexFileName = "APKINDEX.tar.gz"
 var lastUpdated = 0
 var debug *bool
 var client = http.Client{
-	Timeout: 10 * time.Second,
+	Timeout: 5 * time.Second,
 }
 
 func main() {
@@ -94,12 +94,22 @@ func main() {
 		start := time.Now()
 		resp, err := client.Get(indexPath)
 		diff := time.Now().Sub(start)
-		check(err)
-
-		defer resp.Body.Close()
+		if err != nil {
+			if *debug {
+				log.Println("  error connecting", err)
+			}
+			continue
+		}
 
 		index, err := ioutil.ReadAll(resp.Body)
-		check(err)
+		if err != nil {
+			if *debug {
+				log.Println("  error getting file", err)
+			}
+			resp.Body.Close()
+			continue
+		}
+		defer resp.Body.Close()
 
 		zsig, zcontent := split_on_gzip_header(index)
 
