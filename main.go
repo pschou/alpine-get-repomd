@@ -45,7 +45,7 @@ func main() {
 
 	inRepoPath := flag.String("repo", "latest-stable/main/x86_64", "Repo path to use in fetching")
 	mirrorList := flag.String("mirrors", "MIRRORS.txt", "Mirror / directory list of prefixes to use")
-	outputPath := flag.String("output", ".", "Path to put the repodata files")
+	outputPath := flag.String("output", ".", "Path to put the APKINDEX.tar.gz file")
 	// https://git.alpinelinux.org/aports/plain/main/alpine-keys/
 	keys_url = flag.String("keysUrl", "https://alpinelinux.org/keys/", "Where to fetch current keys from")
 	keysDir := flag.String("keysDir", "keys/", "Use keysDir for verifying signature")
@@ -82,9 +82,10 @@ func main() {
 	}
 	var newestModTime *time.Time
 	var newestPKG []byte
+	var new_mirrors []string
 	for i, mirror := range mirrors {
 		if *debug {
-			fmt.Printf(" %d) %s\n", i, mirror)
+			fmt.Printf(" %d/%d) %s\n", i, len(mirrors), mirror)
 		}
 		mirror = strings.TrimSuffix(mirror, "/")
 		indexPath := mirror + "/" + repoPath + "/" + indexFileName
@@ -103,11 +104,17 @@ func main() {
 		// 3) validate Index signature
 		if mod_time, ok := verify(zsig, zcontent, *keysDir); ok {
 			if *debug {
-				fmt.Printf("mod time = %+v\n", mod_time)
+				fmt.Printf("  tar mod time = %+v\n", mod_time)
 			}
-			if newestModTime != nil && newestModTime.Before(mod_time) {
-				mod_time = *newestModTime
+			if newestModTime == nil || newestModTime.Before(mod_time) {
+				if newestModTime != nil && *debug {
+					fmt.Printf("  found newer %+v\n", mod_time)
+				}
+				newestModTime = &mod_time
 				newestPKG = index
+				new_mirrors = []string{mirror}
+			} else if !newestModTime.After(mod_time) {
+				new_mirrors = append(new_mirrors, mirror)
 			}
 		}
 		// 3a) if sig fails next mirror
@@ -115,17 +122,32 @@ func main() {
 	}
 
 	if newestModTime != nil {
-		dir := path.Join(*outputPath, repoPath)
+		dir := *outputPath //path.Join(*outputPath), repoPath)
 		// 4) write ouput_dir/{inRepoPath}/APKINDEX.tar.gz
 		err := ensureDir(dir)
 		check(err)
 
+		if *debug {
+			fmt.Println("  creating file:", path.Join(dir, indexFileName))
+		}
 		fd, err := os.Create(path.Join(dir, indexFileName))
 		check(err)
 
 		defer fd.Close()
 
 		fd.Write(newestPKG)
+
+		if *debug {
+			fmt.Println("  creating file:", path.Join(dir, "LATEST_MIRRORS.txt"))
+		}
+		fd_mirrors, err := os.Create(path.Join(dir, "LATEST_MIRRORS.txt"))
+		check(err)
+
+		defer fd_mirrors.Close()
+
+		for _, mirror := range new_mirrors {
+			fmt.Fprintf(fd_mirrors, "%s\n", mirror)
+		}
 	}
 }
 
@@ -159,7 +181,6 @@ func pullKeys(keysDir string) {
 						fmt.Println("Pulling key for", keyName)
 					}
 					pullKeyByUrl(keyName, keysDir)
-					time.Sleep(3 * time.Second)
 
 					break
 				}
@@ -327,25 +348,13 @@ func verify(zsig []byte, zcontent []byte, pub_dir string) (time.Time, bool) {
 
 func split_on_gzip_header(data []byte) ([]byte, []byte) {
 	gzip_header := []byte{0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00}
-	arr := []byte(gzip_header)
+	//arr := []byte(gzip_header)
 
-	pos := int64(len(gzip_header))
-
-	has_sig := false
-	for !has_sig {
-		if !(bytes.Equal(data[pos:pos+int64(len(gzip_header))], gzip_header)) && int(pos)+int(len(gzip_header)) < int(len(data)) {
-			arr = append(arr, data[pos])
-
-			pos += 1
-		} else {
-			has_sig = true
-		}
+	pos := bytes.Index(data[1:], gzip_header) + 1
+	if pos < 1 {
+		return []byte{}, data
 	}
-
-	sig := data[:pos]
-	content := data[pos:]
-
-	return sig, content
+	return data[:pos], data[pos:]
 }
 
 func check(e error) {
