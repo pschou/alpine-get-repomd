@@ -7,7 +7,6 @@ http://mirror.leaseweb.com/alpine/
 http://alpine.mirror.wearetriple.com/
 http://mirror.clarkson.edu/alpine/
 http://mirrors.dotsrc.org/alpine/
-http://ftp.acc.umu.se/mirror/alpinelinux.org/
 http://alpinelinux.mirror.iweb.com/
 http://pkg.adfinis.com/alpine/
 http://mirror.operationtulip.com/alpine/
@@ -17,5 +16,4 @@ http://ewr.edge.kernel.org/alpine/
 http://ams.edge.kernel.org/alpine/
 http://mirror.pit.teraswitch.com/alpine
 http://mirrors.ocf.berkeley.edu/alpine/
-http://mirrors.aliyun.com/alpine/
 http://mirror.arvancloud.com/alpine

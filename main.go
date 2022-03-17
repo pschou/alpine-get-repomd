@@ -91,7 +91,9 @@ func main() {
 		indexPath := mirror + "/" + repoPath + "/" + indexFileName
 
 		// 2b) pull APKINDEX.tar.gz
+		start := time.Now()
 		resp, err := client.Get(indexPath)
+		diff := time.Now().Sub(start)
 		check(err)
 
 		defer resp.Body.Close()
@@ -114,7 +116,7 @@ func main() {
 				newestPKG = index
 				new_mirrors = []string{mirror}
 			} else if !newestModTime.After(mod_time) {
-				new_mirrors = append(new_mirrors, mirror)
+				new_mirrors = append(new_mirrors, fmt.Sprintf("%s\n# latency: %s", mirror, diff))
 			}
 		}
 		// 3a) if sig fails next mirror
