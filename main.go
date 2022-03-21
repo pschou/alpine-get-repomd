@@ -149,17 +149,18 @@ func main() {
 
 		fd.Write(newestPKG)
 
-		if *debug {
-			fmt.Println("  creating file:", path.Join(dir, "LATEST_MIRRORS.txt"))
-		}
-		fd_mirrors, err := os.Create(path.Join(dir, "LATEST_MIRRORS.txt"))
-		check(err)
+		/*
+			if *debug {
+				fmt.Println("  creating file:", path.Join(dir, "LATEST_MIRRORS.txt"))
+			}
+			fd_mirrors, err := os.Create(path.Join(dir, "LATEST_MIRRORS.txt"))
+			check(err)
 
-		defer fd_mirrors.Close()
+			defer fd_mirrors.Close()
 
-		for _, mirror := range new_mirrors {
-			fmt.Fprintf(fd_mirrors, "%s\n", mirror)
-		}
+			for _, mirror := range new_mirrors {
+				fmt.Fprintf(fd_mirrors, "%s\n", mirror)
+			}*/
 	}
 }
 
