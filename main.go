@@ -138,16 +138,18 @@ func main() {
 		// 4) write ouput_dir/{inRepoPath}/APKINDEX.tar.gz
 		err := ensureDir(dir)
 		check(err)
+		filename := path.Join(dir, indexFileName)
 
 		if *debug {
-			fmt.Println("  creating file:", path.Join(dir, indexFileName))
+			fmt.Println("  creating file:", filename)
 		}
-		fd, err := os.Create(path.Join(dir, indexFileName))
+		fd, err := os.Create(filename)
 		check(err)
 
-		defer fd.Close()
-
 		fd.Write(newestPKG)
+		fd.Close()
+
+		os.Chtimes(filename, *newestModTime, *newestModTime)
 
 		/*
 			if *debug {
