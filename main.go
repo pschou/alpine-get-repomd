@@ -28,7 +28,6 @@ import (
 
 var version = "test"
 
-//var keys_url = "https://alpinelinux.org/keys/"
 var keys_url *string
 var indexFileName = "APKINDEX.tar.gz"
 var lastUpdated = 0
@@ -46,7 +45,7 @@ func main() {
 	inRepoPath := flag.String("repo", "latest-stable/main/x86_64", "Repo path to use in fetching")
 	mirrorList := flag.String("mirrors", "MIRRORS.txt", "Mirror / directory list of prefixes to use")
 	outputPath := flag.String("output", ".", "Path to put the APKINDEX.tar.gz file")
-	// https://git.alpinelinux.org/aports/plain/main/alpine-keys/
+	// Another key repository: https://git.alpinelinux.org/aports/plain/main/alpine-keys/
 	keys_url = flag.String("keysUrl", "https://alpinelinux.org/keys/", "Where to fetch current keys from")
 	keysDir := flag.String("keysDir", "keys/", "Use keysDir for verifying signature")
 	fetch_keys := flag.Bool("fetchkeys", false, "Fetch keys before downloading metadata")
@@ -151,18 +150,6 @@ func main() {
 
 		os.Chtimes(filename, *newestModTime, *newestModTime)
 
-		/*
-			if *debug {
-				fmt.Println("  creating file:", path.Join(dir, "LATEST_MIRRORS.txt"))
-			}
-			fd_mirrors, err := os.Create(path.Join(dir, "LATEST_MIRRORS.txt"))
-			check(err)
-
-			defer fd_mirrors.Close()
-
-			for _, mirror := range new_mirrors {
-				fmt.Fprintf(fd_mirrors, "%s\n", mirror)
-			}*/
 	}
 }
 
