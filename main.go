@@ -21,6 +21,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"sync"
 	"time"
 
 	"golang.org/x/net/html"
@@ -82,55 +83,70 @@ func main() {
 	var newestModTime *time.Time
 	var newestPKG []byte
 	var new_mirrors []string
-	for i, mirror := range mirrors {
-		if *debug {
-			fmt.Printf(" %d/%d) %s\n", i, len(mirrors), mirror)
-		}
-		mirror = strings.TrimSuffix(mirror, "/")
-		indexPath := mirror + "/" + repoPath + "/" + indexFileName
 
-		// 2b) pull APKINDEX.tar.gz
-		start := time.Now()
-		resp, err := client.Get(indexPath)
-		diff := time.Now().Sub(start)
-		if err != nil {
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+
+	for j, mm := range mirrors {
+		i := j
+		mirror := mm
+		time.Sleep(70 * time.Millisecond)
+		go func() {
+			wg.Add(1)
+			defer wg.Done()
 			if *debug {
-				log.Println("  error connecting", err)
+				fmt.Printf(" %d/%d) %s\n", i, len(mirrors), mirror)
 			}
-			continue
-		}
+			mirror = strings.TrimSuffix(mirror, "/")
+			indexPath := mirror + "/" + repoPath + "/" + indexFileName
 
-		index, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			if *debug {
-				log.Println("  error getting file", err)
+			// 2b) pull APKINDEX.tar.gz
+			start := time.Now()
+			resp, err := client.Get(indexPath)
+			diff := time.Now().Sub(start)
+			if err != nil {
+				if *debug {
+					log.Println("  ", i, "error connecting", err)
+				}
+				return
+			}
+
+			index, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				if *debug {
+					log.Println("  ", i, "error getting file", err)
+				}
+				resp.Body.Close()
+				return
 			}
 			resp.Body.Close()
-			continue
-		}
-		defer resp.Body.Close()
 
-		zsig, zcontent := split_on_gzip_header(index)
+			mu.Lock()
+			defer mu.Unlock()
 
-		// 3) validate Index signature
-		if mod_time, ok := verify(zsig, zcontent, *keysDir); ok {
-			if *debug {
-				fmt.Printf("  tar mod time = %+v\n", mod_time)
-			}
-			if newestModTime == nil || newestModTime.Before(mod_time) {
-				if newestModTime != nil && *debug {
-					fmt.Printf("  found newer %+v\n", mod_time)
+			zsig, zcontent := split_on_gzip_header(index)
+
+			// 3) validate Index signature
+			if mod_time, ok := verify(zsig, zcontent, *keysDir); ok {
+				if *debug {
+					fmt.Printf("   %d tar mod time = %+v\n", i, mod_time)
 				}
-				newestModTime = &mod_time
-				newestPKG = index
-				new_mirrors = []string{mirror}
-			} else if !newestModTime.After(mod_time) {
-				new_mirrors = append(new_mirrors, fmt.Sprintf("%s\n# latency: %s", mirror, diff))
+				if newestModTime == nil || newestModTime.Before(mod_time) {
+					if newestModTime != nil && *debug {
+						fmt.Printf("   %d found newer %+v\n", i, mod_time)
+					}
+					newestModTime = &mod_time
+					newestPKG = index
+					new_mirrors = []string{mirror}
+				} else if !newestModTime.After(mod_time) {
+					new_mirrors = append(new_mirrors, fmt.Sprintf("%s\n# latency: %s", mirror, diff))
+				}
 			}
-		}
-		// 3a) if sig fails next mirror
+			// 3a) if sig fails next mirror
 
+		}()
 	}
+	wg.Wait()
 
 	if newestModTime != nil {
 		dir := *outputPath //path.Join(*outputPath), repoPath)
