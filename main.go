@@ -91,8 +91,8 @@ func main() {
 		i := j
 		mirror := mm
 		time.Sleep(70 * time.Millisecond)
+		wg.Add(1)
 		go func() {
-			wg.Add(1)
 			defer wg.Done()
 			if *debug {
 				fmt.Printf(" %d/%d) %s\n", i, len(mirrors), mirror)
