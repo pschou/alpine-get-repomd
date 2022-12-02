@@ -35,7 +35,6 @@ http://alpine.cs.nctu.edu.tw
 http://mirror.ihost.md/alpine
 http://mirror.ette.biz/alpine
 http://alpinelinux.c3sl.ufpr.br
-http://alpine.ccns.ncku.edu.tw/alpine
 http://mirror.dst.ca/alpine
 http://mirror.kumi.systems/alpine
 http://mirror.sabay.com.kh/alpine

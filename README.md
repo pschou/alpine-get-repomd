@@ -47,7 +47,7 @@ Looping over mirrors to get the index files
 Usage:
 ```bash
 $ ./alpine-get-repomd -h
-Alpine Get RepoIndex, Version: 0.1.20220317.1309
+Alpine Get RepoIndex, Version: 0.1.20...
 
 Usage: ./alpine-get-repomd [options...]
 
@@ -65,4 +65,6 @@ Usage: ./alpine-get-repomd [options...]
         Path to put the APKINDEX.tar.gz file (default ".")
   -repo string
         Repo path to use in fetching (default "latest-stable/main/x86_64")
+  -timeout duration
+        HTTP Client Timeout (default 5s)
 ```

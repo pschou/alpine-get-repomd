@@ -51,8 +51,10 @@ func main() {
 	keysDir := flag.String("keysDir", "keys/", "Use keysDir for verifying signature")
 	fetch_keys := flag.Bool("fetchkeys", false, "Fetch keys before downloading metadata")
 	debug = flag.Bool("debug", false, "Turn on debugging")
+	var timeout = flag.Duration("timeout", 5*time.Second, "HTTP Client Timeout")
 	flag.Parse()
 
+	client.Timeout = *timeout
 	mirrors := readMirrors(*mirrorList)
 	repoPath := strings.TrimSuffix(strings.TrimPrefix(*inRepoPath, "/"), "/")
 
