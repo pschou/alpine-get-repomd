@@ -8,6 +8,7 @@ import (
 	"crypto"
 	"crypto/rsa"
 	"crypto/sha1"
+	"crypto/tls"
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/pem"
@@ -33,9 +34,6 @@ var keys_url *string
 var indexFileName = "APKINDEX.tar.gz"
 var lastUpdated = 0
 var debug *bool
-var client = http.Client{
-	Timeout: 5 * time.Second,
-}
 
 func main() {
 	flag.Usage = func() {
@@ -52,9 +50,21 @@ func main() {
 	fetch_keys := flag.Bool("fetchkeys", false, "Fetch keys before downloading metadata")
 	debug = flag.Bool("debug", false, "Turn on debugging")
 	var timeout = flag.Duration("timeout", 5*time.Second, "HTTP Client Timeout")
+	var secureCert = flag.String("client-cert", "", "Satellite repo, CERT for using PKI auth")
+	var secureKey = flag.String("client-key", "", "Satellite repo, KEY for using PKI auth")
+	var secureUser = flag.String("client-user", "", "Satellite repo, using basic USER auth")
+	var securePass = flag.String("client-pass", "", "Satellite repo, PASS for USER")
 	flag.Parse()
 
-	client.Timeout = *timeout
+	http.DefaultClient.Timeout = *timeout
+	if *secureCert != "" {
+		if cert, err := tls.LoadX509KeyPair(*secureCert, *secureKey); err != nil {
+			log.Fatal(err)
+		} else {
+			http.DefaultClient.Transport = &http.Transport{TLSClientConfig: &tls.Config{Certificates: []tls.Certificate{cert}}}
+		}
+	}
+
 	mirrors := readMirrors(*mirrorList)
 	repoPath := strings.TrimSuffix(strings.TrimPrefix(*inRepoPath, "/"), "/")
 
@@ -91,20 +101,29 @@ func main() {
 
 	for j, mm := range mirrors {
 		i := j
-		mirror := mm
+		u, err := url.Parse(mm)
+		if err != nil {
+			fmt.Println("Error using mirror", mm)
+			continue
+		}
 		time.Sleep(70 * time.Millisecond)
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			if *debug {
-				fmt.Printf(" %d/%d) %s\n", i, len(mirrors), mirror)
+			u.Path = strings.TrimSuffix(u.Path, "/")
+			if *secureUser != "" {
+				u.User = url.UserPassword(*secureUser, *securePass)
 			}
-			mirror = strings.TrimSuffix(mirror, "/")
+
+			if *debug {
+				fmt.Printf(" %d/%d) %s\n", i, len(mirrors), u.Redacted())
+			}
+			mirror := strings.TrimSuffix(u.String(), "/")
 			indexPath := mirror + "/" + repoPath + "/" + indexFileName
 
 			// 2b) pull APKINDEX.tar.gz
 			start := time.Now()
-			resp, err := client.Get(indexPath)
+			resp, err := http.DefaultClient.Get(indexPath)
 			diff := time.Now().Sub(start)
 			if err != nil {
 				if *debug {
@@ -141,7 +160,7 @@ func main() {
 					newestPKG = index
 					new_mirrors = []string{mirror}
 				} else if !newestModTime.After(mod_time) {
-					new_mirrors = append(new_mirrors, fmt.Sprintf("%s\n# latency: %s", mirror, diff))
+					new_mirrors = append(new_mirrors, fmt.Sprintf("%s\n# latency: %s", u.Redacted(), diff))
 				}
 			}
 			// 3a) if sig fails next mirror
@@ -180,7 +199,7 @@ func pullLastUpdated(mirrors []string) int {
 }
 
 func pullKeys(keysDir string) {
-	resp, err := client.Get(*keys_url)
+	resp, err := http.DefaultClient.Get(*keys_url)
 	check(err)
 
 	defer resp.Body.Close()
@@ -217,7 +236,7 @@ func pullKeys(keysDir string) {
 
 func pullKeyByUrl(keyName string, keysDir string) {
 	if _, err := os.Stat(path.Join(keysDir, keyName)); errors.Is(err, os.ErrNotExist) {
-		resp, err := client.Get(strings.TrimSuffix(*keys_url, "/") + "/" + keyName)
+		resp, err := http.DefaultClient.Get(strings.TrimSuffix(*keys_url, "/") + "/" + keyName)
 		check(err)
 
 		defer resp.Body.Close()

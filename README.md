@@ -16,7 +16,6 @@ To grab the current ALPINE repo metadata and latest keys:
 Example usage for downloading the repo into out/
 ```bash
 $ ./alpine-get-repomd -debug -output out -mirrors MIRRORS.txt
-CGO_ENABLED=0 go build -ldflags="-s -w -X main.version=0.1.20220317.1309" -o "alpine-get-repomd" main.go filelib.go
 Loading mirror list MIRRORS2.txt
 Checking mirrors to find the lastest MIRRORS2.txt
 Looping over mirrors to get the index files
@@ -47,10 +46,18 @@ Looping over mirrors to get the index files
 Usage:
 ```bash
 $ ./alpine-get-repomd -h
-Alpine Get RepoIndex, Version: 0.1.20...
+Alpine Get RepoIndex
 
 Usage: ./alpine-get-repomd [options...]
 
+  -client-cert string
+        Satellite repo, CERT for using PKI auth
+  -client-key string
+        Satellite repo, KEY for using PKI auth
+  -client-pass string
+        Satellite repo, PASS for USER
+  -client-user string
+        Satellite repo, using basic USER auth
   -debug
         Turn on debugging
   -fetchkeys
